@@ -41,3 +41,17 @@ create table if not exists public.caas_chat_messages (
 
 create index if not exists idx_caas_chat_messages_user_created_at
   on public.caas_chat_messages (user_id, created_at desc);
+
+create table if not exists public.caas_user_access_logs (
+  id bigint generated always as identity primary key,
+  user_id uuid references public.caas_users(user_id) on delete set null,
+  identifier text,
+  event_type text not null check (event_type in ('login_success', 'login_failed', 'logout')),
+  ip_address text,
+  user_agent text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_caas_user_access_logs_user_created_at
+  on public.caas_user_access_logs (user_id, created_at desc);

@@ -8,5 +8,6 @@ Run scripts in order in Supabase SQL Editor:
 Notes:
 - All project tables use the `caas_` prefix.
 - `caas_users.password_hash` stores bcrypt hashes.
+- `caas_user_access_logs` stores login/logout audit events.
 - Insert your test users manually.
 - Login lookup uses `email` first, then `username`.

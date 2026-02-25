@@ -41,3 +41,8 @@ def get_caas_user_by_identifier(identifier: str) -> dict[str, Any] | None:
         return username_result.data[0]
 
     return None
+
+
+def insert_caas_user_access_log(payload: dict[str, Any]) -> Any:
+    client = create_supabase_client()
+    return client.table("caas_user_access_logs").insert(payload).execute()
