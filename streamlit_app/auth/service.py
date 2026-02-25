@@ -77,7 +77,6 @@ def _log_access_event(
     try:
         insert_caas_user_access_log(payload)
     except Exception:
-        # Logging must never break login flow.
         pass
 
 
@@ -105,6 +104,15 @@ def sign_in(identifier: str, password: str) -> tuple[bool, str]:
         )
         return False, "Invalid credentials."
 
+    if user.get("is_active") is False:
+        _log_access_event(
+            event_type="login_failed",
+            identifier=identifier,
+            user_id=user.get("user_id"),
+            metadata={"reason": "inactive_user"},
+        )
+        return False, "This user is inactive. Please contact support."
+
     password_hash = user.get("password_hash")
     if not isinstance(password_hash, str) or not _verify_password(password, password_hash):
         _log_access_event(
@@ -122,6 +130,7 @@ def sign_in(identifier: str, password: str) -> tuple[bool, str]:
         "name": user.get("name"),
         "lastname": user.get("lastname"),
         "email": user.get("email"),
+        "access_role": user.get("access_role") or "user",
     }
 
     _log_access_event(

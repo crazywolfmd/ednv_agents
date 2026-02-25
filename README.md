@@ -1,40 +1,35 @@
 # Chaos-as-a-service
 
-Minimal AI Agents starter project with:
-- `LangChain` for orchestration
-- `LangGraph` for workflow/state
-- `LangSmith` for tracing
-- `Streamlit` frontend with auth-gated chat
-- `Supabase` for auth/data tables
+AI agent banking sandbox with Streamlit frontend, LangGraph orchestration, and Supabase persistence.
+
+## What it does
+
+- Auth against `caas_users` (bcrypt password hashes)
+- Chat assistant with two-agent flow:
+  - `task_agent` for intent + parameter extraction
+  - `validator_agent` for user-facing response cleanup
+- Deterministic financial rules/execution layer for:
+  - check balances
+  - list recent transactions
+  - internal transfer between own accounts
+  - open/close account
+  - open/close card
+- Login/access audit logging in `caas_user_access_logs`
 
 ## Project layout
 
 ```text
 .
-|-- app.py                         # Root Streamlit entrypoint
+|-- app.py
+|-- streamlit_app/
+|-- agents/
+|-- db/
+|   `-- sql/
 |-- requirements.txt
-|-- .env.example
-|-- .streamlit
-|   `-- config.toml                # Hides technical error details in UI
-|-- streamlit_app
-|   |-- app.py                     # Main Streamlit runtime/router
-|   |-- settings.py
-|   |-- auth
-|   |   |-- service.py             # caas_users authentication/session helpers
-|   |   `-- ui.py                  # Login screen
-|   `-- pages
-|       `-- system_status.py
-|-- agents
-|   |-- settings.py
-|   |-- chains.py
-|   |-- graph.py
-|   `-- main.py
-`-- db
-    |-- client.py                  # Supabase client config
-    `-- repository.py
+`-- README.md
 ```
 
-## Quickstart (Windows PowerShell)
+## Setup
 
 ```powershell
 python -m venv .venv
@@ -44,39 +39,41 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Set values in `.env`:
+Set `.env` (or Streamlit Secrets):
 
 ```env
 OPENAI_API_KEY=...
 OPENAI_MODEL=gpt-4o-mini
-LANGSMITH_API_KEY=...          # optional
+LANGSMITH_API_KEY=...              # optional
 LANGSMITH_TRACING=true
 LANGSMITH_PROJECT=chaos-as-a-service-dev
 SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_ANON_KEY=...
+SUPABASE_KEY=your_service_role_key
 ```
 
-## Run
+## Database migration order
 
-Streamlit app:
+Run in Supabase SQL Editor:
+
+1. `db/sql/001_create_tables.sql`
+2. `db/sql/002_create_rls.sql`
+3. `db/sql/003_create_financial_tables.sql`
+4. `db/sql/004_create_financial_rls.sql`
+
+## Run
 
 ```powershell
 streamlit run app.py
 ```
 
-CLI mode:
+## Transaction usage notes
 
-```powershell
-python -m agents.main
-```
+- Transfer/open/close actions require explicit confirmation.
+- When prompted, type `CONFIRM` to execute or `CANCEL` to abort.
 
-## Auth flow (`caas_users`)
-
-- Login checks `caas_users` directly by identifier (`email` first, then `username`) and verifies `password_hash` with bcrypt.
-- App expects `caas_users` columns: `user_id`, `username`, `name`, `lastname`, `email`, `password_hash`.
-- Successful login stores only user profile fields in Streamlit session state.
-
-## User-facing error behavior
-
-- App catches runtime exceptions and shows friendly messages.
-- Technical stack traces are hidden in UI via `.streamlit/config.toml`.
+Example prompts:
+- `Show my balances`
+- `Transfer 25 USD from <from_account_id> to <to_account_id>`
+- `Open a USD savings account`
+- `Open a virtual card linked to <account_id>`
+- `Close card <card_id>`
