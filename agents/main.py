@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.graph import build_graph
+from agents.graph import build_graph
 
 
 def main():

@@ -10,9 +10,9 @@ load_dotenv()
 
 
 @dataclass(frozen=True)
-class Settings:
+class AgentSettings:
     openai_model: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    langsmith_project: str = os.getenv("LANGSMITH_PROJECT", "endv-agents-dev")
+    langsmith_project: str = os.getenv("LANGSMITH_PROJECT", "chaos-as-a-service-dev")
 
 
-settings = Settings()
+settings = AgentSettings()

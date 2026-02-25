@@ -5,7 +5,7 @@ from typing import TypedDict
 from langgraph.graph import END, START, StateGraph
 from langsmith import traceable
 
-from src.chains import build_chain
+from agents.chains import build_chain
 
 
 class AgentState(TypedDict):

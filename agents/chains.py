@@ -3,7 +3,7 @@ from __future__ import annotations
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
-from src.settings import settings
+from agents.settings import settings
 
 
 SYSTEM_PROMPT = (
