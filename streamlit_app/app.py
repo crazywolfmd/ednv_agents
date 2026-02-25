@@ -72,7 +72,18 @@ def run() -> None:
             st.error("The page is temporarily unavailable. Please refresh and try again.")
         return
 
-    selected_page = st.sidebar.radio("Navigation", ["Chat", "System Status"])
+    selected_page = st.sidebar.radio(
+        "Navigation",
+        ["Chat", "Password Generator", "System Status"],
+    )
+
+    if selected_page == "Password Generator":
+        try:
+            render_password_generator_page()
+        except Exception:
+            logger.exception("Password generator page failed.")
+            st.error("The page is temporarily unavailable. Please refresh and try again.")
+        return
 
     if selected_page == "System Status":
         try:
