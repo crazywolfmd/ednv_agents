@@ -100,9 +100,9 @@ def _render_chat(user: dict[str, str]) -> None:
             answer = result.get("assistant_response", "")
             llm_usage = result.get("token_usage", {})
             st.session_state.pending_action = result.get("pending_action")
-        except Exception:
+        except Exception as exc:
             logger.exception("Chat processing failed.")
-            st.error("Sorry, I could not process your request right now. Please try again.")
+            st.exception(exc)
             return
 
         st.session_state.history.append({"user": user_input, "assistant": answer})
@@ -124,9 +124,9 @@ def _render_chat(user: dict[str, str]) -> None:
         if st.button("Clear", key="clear_chat_btn", use_container_width=False, help="Clear today's chat history"):
             try:
                 clear_chat_messages(user_id=user_id)
-            except Exception:
+            except Exception as exc:
                 logger.exception("Failed to clear chat messages.")
-                st.error("Could not clear chat right now.")
+                st.exception(exc)
                 return
 
             st.session_state.history = []
@@ -169,9 +169,9 @@ def run() -> None:
     if requested_page == "password-generator":
         try:
             render_password_generator_page()
-        except Exception:
+        except Exception as exc:
             logger.exception("Password generator page failed.")
-            st.error("The page is temporarily unavailable. Please refresh and try again.")
+            st.exception(exc)
         return
 
     if requested_page == "admin-console":
@@ -180,9 +180,9 @@ def run() -> None:
             return
         try:
             render_admin_console_page()
-        except Exception:
+        except Exception as exc:
             logger.exception("Admin console page failed.")
-            st.error("The page is temporarily unavailable. Please refresh and try again.")
+            st.exception(exc)
         return
 
     nav_items = ["Chat", "Password Generator", "System Status"]
@@ -194,17 +194,17 @@ def run() -> None:
     if selected_page == "Password Generator":
         try:
             render_password_generator_page()
-        except Exception:
+        except Exception as exc:
             logger.exception("Password generator page failed.")
-            st.error("The page is temporarily unavailable. Please refresh and try again.")
+            st.exception(exc)
         return
 
     if selected_page == "System Status":
         try:
             render_system_status_page()
-        except Exception:
+        except Exception as exc:
             logger.exception("System Status page failed.")
-            st.error("The page is temporarily unavailable. Please refresh and try again.")
+            st.exception(exc)
         return
 
     if selected_page == "Admin Console":
@@ -213,9 +213,9 @@ def run() -> None:
             return
         try:
             render_admin_console_page()
-        except Exception:
+        except Exception as exc:
             logger.exception("Admin console page failed.")
-            st.error("The page is temporarily unavailable. Please refresh and try again.")
+            st.exception(exc)
         return
 
     _render_chat(user=user)
@@ -224,6 +224,6 @@ def run() -> None:
 if __name__ == "__main__":
     try:
         run()
-    except Exception:
+    except Exception as exc:
         logger.exception("Unhandled app error.")
-        st.error("Something went wrong. Please refresh and try again.")
+        st.exception(exc)

@@ -100,12 +100,7 @@ def task_agent(state: AgentState) -> AgentState:
         raw = getattr(output, "content", "") or ""
         parsed = _safe_json_loads(raw)
     except Exception:
-        return {
-            "intent": "general_chat",
-            "assistant_response": "The planning agent is temporarily unavailable. Please try again.",
-            "action_params": {},
-            "token_usage": usage,
-        }
+        raise
 
     intent = str(parsed.get("intent", "general_chat"))
     action_params = parsed.get("params", {}) if isinstance(parsed.get("params"), dict) else {}
@@ -127,7 +122,7 @@ def task_agent(state: AgentState) -> AgentState:
                 result["assistant_response"] = getattr(chat_output, "content", "") or ""
                 result["token_usage"] = _merge_usage(usage, _extract_usage(chat_output))
             except Exception:
-                result["assistant_response"] = "I could not generate an answer right now. Please try again."
+                raise
 
     return result
 
@@ -168,7 +163,7 @@ def validator_agent(state: AgentState) -> AgentState:
         parsed = _safe_json_loads(getattr(output, "content", "") or "")
         final_response = str(parsed.get("final_response", "")).strip()
     except Exception:
-        return {"assistant_response": response, "token_usage": usage}
+        raise
 
     if final_response:
         return {"assistant_response": final_response, "token_usage": usage}
