@@ -12,3 +12,5 @@ where llm_provider is null
     or llm_completion_tokens is not null
     or llm_calls is not null
   );
+
+

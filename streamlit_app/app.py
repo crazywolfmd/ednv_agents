@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 
 import streamlit as st
 
@@ -15,6 +16,32 @@ from streamlit_app.settings import APP_CAPTION, APP_TITLE, DEFAULT_PLACEHOLDER
 
 
 logger = logging.getLogger(__name__)
+
+
+def _format_timestamp(value: str | None) -> str:
+    if not value:
+        return datetime.now().strftime("%H:%M:%S")
+
+    raw = str(value).strip().replace("Z", "+00:00")
+    try:
+        return datetime.fromisoformat(raw).strftime("%H:%M:%S")
+    except ValueError:
+        return str(value)
+
+
+def _render_timestamp_css() -> None:
+    st.markdown(
+        """
+        <style>
+        .caas-ts {
+            font-size: 0.82em;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def _load_history_once(user_id: str) -> None:
@@ -34,14 +61,23 @@ def _load_history_once(user_id: str) -> None:
         return
 
     history: list[dict[str, str]] = []
-    pending_user = None
+    pending_user: dict[str, str] | None = None
     for row in rows:
         role = row.get("role")
         content = row.get("content", "")
+        created_at = str(row.get("created_at") or "")
+
         if role == "user":
-            pending_user = content
+            pending_user = {"content": content, "created_at": created_at}
         elif role == "assistant":
-            history.append({"user": pending_user or "", "assistant": content})
+            history.append(
+                {
+                    "user": (pending_user or {}).get("content", ""),
+                    "user_ts": (pending_user or {}).get("created_at", ""),
+                    "assistant": content,
+                    "assistant_ts": created_at,
+                }
+            )
             pending_user = None
 
     st.session_state.history = history
@@ -80,7 +116,10 @@ def _render_chat(user: dict[str, str]) -> None:
     _load_history_once(user_id=user_id)
 
     if st.session_state.pending_action:
-        st.info("A transaction is pending confirmation. Type CONFIRM to execute or CANCEL to abort.")
+        if st.session_state.pending_action.get("status") == "awaiting_params":
+            st.info("More details are needed to complete your request. Reply with the missing value or type CANCEL.")
+        else:
+            st.info("A transaction is pending confirmation. Type CONFIRM to execute or CANCEL to abort.")
 
     with st.form("chat_input_form", clear_on_submit=True):
         user_input = st.text_input("Ask anything", placeholder=DEFAULT_PLACEHOLDER)
@@ -105,7 +144,15 @@ def _render_chat(user: dict[str, str]) -> None:
             st.exception(exc)
             return
 
-        st.session_state.history.append({"user": user_input, "assistant": answer})
+        now_ts = datetime.now().strftime("%H:%M:%S")
+        st.session_state.history.append(
+            {
+                "user": user_input,
+                "user_ts": now_ts,
+                "assistant": answer,
+                "assistant_ts": now_ts,
+            }
+        )
         _persist_turn(
             user_id=user_id,
             user_text=user_input,
@@ -115,9 +162,18 @@ def _render_chat(user: dict[str, str]) -> None:
         st.rerun()
 
     st.markdown("### Conversation")
+    _render_timestamp_css()
     for turn in st.session_state.history:
-        st.markdown(f"**You:** {turn['user']}")
-        st.markdown("**Assistant:**")
+        user_ts = _format_timestamp(turn.get("user_ts"))
+        assistant_ts = _format_timestamp(turn.get("assistant_ts"))
+        st.markdown(
+            f"**You** <span class=\"caas-ts\">({user_ts})</span>: {turn['user']}",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"**Assistant** <span class=\"caas-ts\">({assistant_ts})</span>:",
+            unsafe_allow_html=True,
+        )
         st.markdown(turn["assistant"])
 
     left_col, right_col = st.columns([9, 1])
@@ -228,5 +284,3 @@ if __name__ == "__main__":
     except Exception as exc:
         logger.exception("Unhandled app error.")
         st.exception(exc)
-
-

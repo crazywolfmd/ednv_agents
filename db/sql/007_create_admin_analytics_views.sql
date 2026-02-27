@@ -1,4 +1,4 @@
--- 011_create_admin_analytics_views.sql
+-- 007_create_admin_analytics_views.sql
 -- Creates reusable analytics views for the admin console.
 
 create or replace view public.caas_admin_vw_kpis as
@@ -148,3 +148,5 @@ select
   ) as assistant_negative_token_rows,
   (select count(*)::bigint from public.caas_user_access_logs where coalesce(nullif(ip_address, ''), '') = '') as access_logs_missing_ip,
   now() as refreshed_at;
+
+

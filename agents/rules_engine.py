@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import re
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import UUID
@@ -76,6 +77,14 @@ def _fmt_account(account: dict[str, Any]) -> str:
 
 def _build_confirm_message(summary: str) -> str:
     return f"{summary}\n\nReply with CONFIRM to execute this request or CANCEL to abort."
+
+
+def _extract_uuid_from_text(text: str) -> str:
+    match = re.search(
+        r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b",
+        str(text or ""),
+    )
+    return match.group(0) if match else ""
 
 
 def handle_rules_and_execution(
@@ -211,6 +220,58 @@ def handle_rules_and_execution(
 
         return "Unknown pending action. Please submit the request again.", None
 
+    if pending_action and pending_action.get("status") == "awaiting_params":
+        pending_intent = str(pending_action.get("intent") or "")
+        pending_params = pending_action.get("params", {}) or {}
+
+        if pending_intent == "open_card":
+            card_type = (
+                _normalize_text_param(params.get("card_type") or pending_params.get("card_type") or "debit").lower().strip()
+                or "debit"
+            )
+            linked_account_id = _normalize_id_param(
+                params.get("linked_account_id")
+                or pending_params.get("linked_account_id")
+                or _extract_uuid_from_text(user_input)
+            )
+
+            if not linked_account_id:
+                pending = {
+                    "intent": "open_card",
+                    "status": "awaiting_params",
+                    "missing_fields": ["linked_account_id"],
+                    "params": {"card_type": card_type},
+                }
+                return "Please provide linked_account_id to continue opening your card.", pending
+
+            if not _is_valid_uuid(linked_account_id):
+                pending = {
+                    "intent": "open_card",
+                    "status": "awaiting_params",
+                    "missing_fields": ["linked_account_id"],
+                    "params": {"card_type": card_type},
+                }
+                return "The provided account ID is not a valid UUID. Please send a valid linked_account_id.", pending
+
+            account = get_caas_account(user_id=user_id, account_id=linked_account_id)
+            if not account:
+                pending = {
+                    "intent": "open_card",
+                    "status": "awaiting_params",
+                    "missing_fields": ["linked_account_id"],
+                    "params": {"card_type": card_type},
+                }
+                return "Linked account not found. Please provide a valid account ID.", pending
+            if account.get("status") != "active":
+                return "Linked account is not active.", None
+
+            pending = {
+                "intent": "open_card",
+                "params": {"linked_account_id": linked_account_id, "card_type": card_type},
+            }
+            summary = f"Open {card_type} card linked to account {linked_account_id}."
+            return _build_confirm_message(summary), pending
+
     if intent == "check_balance":
         account_id = _normalize_id_param(params.get("account_id"))
         if account_id:
@@ -307,10 +368,16 @@ def handle_rules_and_execution(
         return _build_confirm_message(summary), pending
 
     if intent == "open_card":
-        linked_account_id = _normalize_id_param(params.get("linked_account_id"))
+        linked_account_id = _normalize_id_param(params.get("linked_account_id") or _extract_uuid_from_text(user_input))
         card_type = _normalize_text_param(params.get("card_type", "debit")).lower().strip() or "debit"
         if not linked_account_id:
-            return "Open card requires linked_account_id.", None
+            pending = {
+                "intent": "open_card",
+                "status": "awaiting_params",
+                "missing_fields": ["linked_account_id"],
+                "params": {"card_type": card_type},
+            }
+            return "Please provide linked_account_id to continue opening your card.", pending
         if not _is_valid_uuid(linked_account_id):
             return "Please provide a valid linked_account_id UUID.", None
 
@@ -350,4 +417,3 @@ def handle_rules_and_execution(
         return _build_confirm_message(summary), pending
 
     return "No transaction action recognized. I can still help with banking questions.", None
-

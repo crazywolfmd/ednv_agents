@@ -16,3 +16,5 @@ alter table public.caas_chat_messages
     llm_provider is null
     or llm_provider in ('openai', 'huggingface')
   );
+
+
