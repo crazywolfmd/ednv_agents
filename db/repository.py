@@ -278,3 +278,90 @@ def purge_old_chat_messages(user_id: str, days: int = 1) -> Any:
 def clear_chat_messages(user_id: str) -> Any:
     client = create_supabase_client()
     return client.table("caas_chat_messages").delete().eq("user_id", user_id).execute()
+
+def _fetch_single_admin_view_row(view_name: str) -> dict[str, Any]:
+    client = create_supabase_client()
+    result = client.table(view_name).select("*").limit(1).execute()
+    return (result.data or [{}])[0]
+
+
+def _fetch_admin_view_rows(
+    view_name: str,
+    order_column: str | None = None,
+    desc: bool = True,
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
+    client = create_supabase_client()
+    query = client.table(view_name).select("*")
+    if order_column:
+        query = query.order(order_column, desc=desc)
+    if limit is not None:
+        query = query.limit(limit)
+    result = query.execute()
+    return result.data or []
+
+
+def get_admin_kpis() -> dict[str, Any]:
+    return _fetch_single_admin_view_row("caas_admin_vw_kpis")
+
+
+def get_admin_daily_usage(limit_days: int = 30) -> list[dict[str, Any]]:
+    rows = _fetch_admin_view_rows(
+        "caas_admin_vw_daily_usage",
+        order_column="day",
+        desc=True,
+        limit=limit_days,
+    )
+    return list(reversed(rows))
+
+
+def get_admin_provider_usage() -> list[dict[str, Any]]:
+    return _fetch_admin_view_rows(
+        "caas_admin_vw_provider_usage",
+        order_column="total_tokens",
+        desc=True,
+    )
+
+
+def get_admin_model_usage(limit_rows: int = 25) -> list[dict[str, Any]]:
+    return _fetch_admin_view_rows(
+        "caas_admin_vw_model_usage",
+        order_column="total_tokens",
+        desc=True,
+        limit=limit_rows,
+    )
+
+
+def get_admin_transaction_daily(limit_days: int = 30) -> list[dict[str, Any]]:
+    rows = _fetch_admin_view_rows(
+        "caas_admin_vw_transaction_daily",
+        order_column="day",
+        desc=True,
+    )
+    return list(reversed(rows[: limit_days * 20]))
+
+
+def get_admin_transaction_failures(limit_rows: int = 50) -> list[dict[str, Any]]:
+    return _fetch_admin_view_rows(
+        "caas_admin_vw_transaction_failures",
+        order_column="created_at",
+        desc=True,
+        limit=limit_rows,
+    )
+
+
+def get_admin_auth_daily(limit_days: int = 30) -> list[dict[str, Any]]:
+    rows = _fetch_admin_view_rows(
+        "caas_admin_vw_auth_daily",
+        order_column="day",
+        desc=True,
+    )
+    return list(reversed(rows[: limit_days * 5]))
+
+
+def get_admin_entity_status() -> list[dict[str, Any]]:
+    return _fetch_admin_view_rows("caas_admin_vw_entity_status")
+
+
+def get_admin_data_quality() -> dict[str, Any]:
+    return _fetch_single_admin_view_row("caas_admin_vw_data_quality")

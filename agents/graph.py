@@ -80,6 +80,39 @@ def _merge_usage(base: dict[str, Any] | None, inc: dict[str, Any] | None) -> dic
     }
 
 
+def _normalize_for_match(text: str) -> str:
+    cleaned = " ".join(str(text or "").strip().lower().split())
+    for ch in "?!.,;:\"'":
+        cleaned = cleaned.replace(ch, "")
+    return cleaned
+
+
+def _override_intent_from_text(user_input: str, predicted_intent: str) -> str:
+    text = _normalize_for_match(user_input)
+
+    account_phrases = {
+        "list accounts",
+        "show accounts",
+        "show my accounts",
+        "show my balances",
+        "how many accounts do i have",
+        "what accounts do i have",
+        "what is my balance",
+        "what are my balances",
+    }
+
+    if text in account_phrases:
+        return "check_balance"
+
+    if "account" in text and "how many" in text:
+        return "check_balance"
+
+    if "balance" in text and "transaction" not in text:
+        return "check_balance"
+
+    return predicted_intent
+
+
 @traceable(name="task_agent")
 def task_agent(state: AgentState) -> AgentState:
     user_input = state.get("user_input", "")
@@ -99,7 +132,7 @@ def task_agent(state: AgentState) -> AgentState:
     raw = getattr(output, "content", "") or ""
     parsed = _safe_json_loads(raw)
 
-    intent = str(parsed.get("intent", "general_chat"))
+    intent = _override_intent_from_text(user_input, str(parsed.get("intent", "general_chat")))
     action_params = parsed.get("params", {}) if isinstance(parsed.get("params"), dict) else {}
     general_response = str(parsed.get("general_response", "")).strip()
 
@@ -176,3 +209,5 @@ def build_graph():
     graph.add_edge("rules_engine", "validator_agent")
     graph.add_edge("validator_agent", END)
     return graph.compile()
+
+
