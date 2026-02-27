@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Any
+from uuid import UUID
 
 from db.repository import (
     apply_internal_transfer,
@@ -16,6 +17,20 @@ from db.repository import (
 )
 
 
+PLACEHOLDER_VALUES = {
+    "",
+    "none",
+    "null",
+    "n/a",
+    "na",
+    "optional uuid/string",
+    "optional number",
+    "optional currency code",
+    "optional checking|savings",
+    "optional debit|virtual",
+}
+
+
 def _parse_decimal(value: Any) -> Decimal | None:
     try:
         amount = Decimal(str(value))
@@ -24,6 +39,26 @@ def _parse_decimal(value: Any) -> Decimal | None:
     if amount <= 0:
         return None
     return amount
+
+
+def _normalize_text_param(value: Any) -> str:
+    raw = str(value or "").strip()
+    lowered = raw.lower()
+    if lowered in PLACEHOLDER_VALUES:
+        return ""
+    return raw
+
+
+def _normalize_id_param(value: Any) -> str:
+    return _normalize_text_param(value)
+
+
+def _is_valid_uuid(value: str) -> bool:
+    try:
+        UUID(value)
+        return True
+    except Exception:
+        return False
 
 
 def _fmt_account(account: dict[str, Any]) -> str:
@@ -55,16 +90,21 @@ def handle_rules_and_execution(
         pending_params = pending_action.get("params", {})
 
         if pending_intent == "transfer_between_accounts":
+            from_account_id = _normalize_id_param(pending_params.get("from_account_id"))
+            to_account_id = _normalize_id_param(pending_params.get("to_account_id"))
+            if not _is_valid_uuid(from_account_id) or not _is_valid_uuid(to_account_id):
+                return "Pending transfer is invalid. Please create it again.", None
+
             amount = _parse_decimal(pending_params.get("amount"))
             if amount is None:
                 return "Pending transfer is invalid. Please create it again.", None
 
             result = apply_internal_transfer(
                 user_id=user_id,
-                from_account_id=str(pending_params.get("from_account_id", "")),
-                to_account_id=str(pending_params.get("to_account_id", "")),
+                from_account_id=from_account_id,
+                to_account_id=to_account_id,
                 amount=amount,
-                currency=str(pending_params.get("currency", "")).upper(),
+                currency=_normalize_text_param(pending_params.get("currency", "")).upper(),
             )
             if not result.get("ok"):
                 return f"Transfer failed: {result.get('reason', 'unknown error')}", None
@@ -74,8 +114,8 @@ def handle_rules_and_execution(
         if pending_intent == "open_account":
             account = create_caas_account(
                 user_id=user_id,
-                account_type=str(pending_params.get("account_type", "checking")).lower(),
-                currency=str(pending_params.get("currency", "USD")).upper(),
+                account_type=_normalize_text_param(pending_params.get("account_type", "checking")).lower() or "checking",
+                currency=_normalize_text_param(pending_params.get("currency", "USD")).upper() or "USD",
             )
             create_caas_transaction(
                 {
@@ -89,7 +129,10 @@ def handle_rules_and_execution(
             return f"Account opened: {account.get('account_id')}", None
 
         if pending_intent == "open_card":
-            linked_account_id = str(pending_params.get("linked_account_id", ""))
+            linked_account_id = _normalize_id_param(pending_params.get("linked_account_id"))
+            if not _is_valid_uuid(linked_account_id):
+                return "Pending open-card request is invalid. Please submit it again.", None
+
             account = get_caas_account(user_id=user_id, account_id=linked_account_id)
             if not account or account.get("status") != "active":
                 return "Cannot open card. Linked account must exist and be active.", None
@@ -97,7 +140,7 @@ def handle_rules_and_execution(
             card = create_caas_card(
                 user_id=user_id,
                 linked_account_id=linked_account_id,
-                card_type=str(pending_params.get("card_type", "debit")).lower(),
+                card_type=_normalize_text_param(pending_params.get("card_type", "debit")).lower() or "debit",
             )
             create_caas_transaction(
                 {
@@ -111,7 +154,11 @@ def handle_rules_and_execution(
             return f"Card opened: {card.get('card_id')} (expires {card.get('expires_at')})", None
 
         if pending_intent == "close_card":
-            card = get_caas_card(user_id=user_id, card_id=str(pending_params.get("card_id", "")))
+            card_id = _normalize_id_param(pending_params.get("card_id"))
+            if not _is_valid_uuid(card_id):
+                return "Pending close-card request is invalid. Please submit it again.", None
+
+            card = get_caas_card(user_id=user_id, card_id=card_id)
             if not card:
                 return "Card was not found.", None
             if card.get("status") in {"closed", "expired"}:
@@ -131,7 +178,11 @@ def handle_rules_and_execution(
             return f"Card closed: {card.get('card_id')}", None
 
         if pending_intent == "close_account":
-            account = get_caas_account(user_id=user_id, account_id=str(pending_params.get("account_id", "")))
+            account_id = _normalize_id_param(pending_params.get("account_id"))
+            if not _is_valid_uuid(account_id):
+                return "Pending close-account request is invalid. Please submit it again.", None
+
+            account = get_caas_account(user_id=user_id, account_id=account_id)
             if not account:
                 return "Account was not found.", None
             if Decimal(str(account.get("balance", "0"))) > Decimal("0"):
@@ -155,8 +206,10 @@ def handle_rules_and_execution(
         return "Unknown pending action. Please submit the request again.", None
 
     if intent == "check_balance":
-        account_id = str(params.get("account_id", "")).strip()
+        account_id = _normalize_id_param(params.get("account_id"))
         if account_id:
+            if not _is_valid_uuid(account_id):
+                return "Please provide a valid account_id UUID, or ask 'Show my balances'.", None
             account = get_caas_account(user_id=user_id, account_id=account_id)
             if not account:
                 return "Account not found.", None
@@ -181,9 +234,9 @@ def handle_rules_and_execution(
         return "\n".join(lines), None
 
     if intent == "transfer_between_accounts":
-        from_account_id = str(params.get("from_account_id", "")).strip()
-        to_account_id = str(params.get("to_account_id", "")).strip()
-        currency = str(params.get("currency", "USD")).upper().strip()
+        from_account_id = _normalize_id_param(params.get("from_account_id"))
+        to_account_id = _normalize_id_param(params.get("to_account_id"))
+        currency = _normalize_text_param(params.get("currency", "USD")).upper().strip() or "USD"
         amount = _parse_decimal(params.get("amount"))
 
         if not from_account_id or not to_account_id or amount is None:
@@ -191,6 +244,9 @@ def handle_rules_and_execution(
                 "Transfer requires from_account_id, to_account_id, and amount > 0.",
                 None,
             )
+
+        if not _is_valid_uuid(from_account_id) or not _is_valid_uuid(to_account_id):
+            return "Please provide valid UUID values for from_account_id and to_account_id.", None
 
         if from_account_id == to_account_id:
             return "Transfer requires two different accounts.", None
@@ -217,22 +273,22 @@ def handle_rules_and_execution(
                 "currency": currency,
             },
         }
-        summary = (
-            f"Transfer {currency} {amount} from {from_account_id} to {to_account_id}."
-        )
+        summary = f"Transfer {currency} {amount} from {from_account_id} to {to_account_id}."
         return _build_confirm_message(summary), pending
 
     if intent == "open_account":
-        account_type = str(params.get("account_type", "checking")).lower().strip() or "checking"
-        currency = str(params.get("currency", "USD")).upper().strip() or "USD"
+        account_type = _normalize_text_param(params.get("account_type", "checking")).lower().strip() or "checking"
+        currency = _normalize_text_param(params.get("currency", "USD")).upper().strip() or "USD"
         pending = {"intent": intent, "params": {"account_type": account_type, "currency": currency}}
         summary = f"Open a new {currency} {account_type} account."
         return _build_confirm_message(summary), pending
 
     if intent == "close_account":
-        account_id = str(params.get("account_id", "")).strip()
+        account_id = _normalize_id_param(params.get("account_id"))
         if not account_id:
             return "Close account requires account_id.", None
+        if not _is_valid_uuid(account_id):
+            return "Please provide a valid account_id UUID.", None
 
         account = get_caas_account(user_id=user_id, account_id=account_id)
         if not account:
@@ -245,10 +301,12 @@ def handle_rules_and_execution(
         return _build_confirm_message(summary), pending
 
     if intent == "open_card":
-        linked_account_id = str(params.get("linked_account_id", "")).strip()
-        card_type = str(params.get("card_type", "debit")).lower().strip() or "debit"
+        linked_account_id = _normalize_id_param(params.get("linked_account_id"))
+        card_type = _normalize_text_param(params.get("card_type", "debit")).lower().strip() or "debit"
         if not linked_account_id:
             return "Open card requires linked_account_id.", None
+        if not _is_valid_uuid(linked_account_id):
+            return "Please provide a valid linked_account_id UUID.", None
 
         account = get_caas_account(user_id=user_id, account_id=linked_account_id)
         if not account:
@@ -261,9 +319,11 @@ def handle_rules_and_execution(
         return _build_confirm_message(summary), pending
 
     if intent == "close_card":
-        card_id = str(params.get("card_id", "")).strip()
+        card_id = _normalize_id_param(params.get("card_id"))
         if not card_id:
             return "Close card requires card_id.", None
+        if not _is_valid_uuid(card_id):
+            return "Please provide a valid card_id UUID.", None
 
         card = get_caas_card(user_id=user_id, card_id=card_id)
         if not card:

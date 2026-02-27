@@ -26,7 +26,7 @@ Return valid JSON only using this schema:
 }}
 Rules:
 - If the user writes CONFIRM or CANCEL, set intent to general_chat and keep params empty.
-- For non-transactional conversation, set intent to general_chat with a concise helpful answer in general_response.
+- For non-transactional conversation, set intent to general_chat with a concise helpful answer in general_response.\n- Never output literal placeholders like "optional uuid/string"; use an empty string for unknown params.
 """.strip()
 
 VALIDATION_SYSTEM_PROMPT = """
