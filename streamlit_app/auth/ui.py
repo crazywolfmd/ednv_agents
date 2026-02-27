@@ -12,7 +12,7 @@ def render_auth_screen() -> None:
     with st.form("login_form", clear_on_submit=False):
         login_identifier = st.text_input("Username or Email", key="login_identifier")
         login_password = st.text_input("Password", type="password", key="login_password")
-        login_submitted = st.form_submit_button("Login", use_container_width=True)
+        login_submitted = st.form_submit_button("Login", width="stretch")
 
     if login_submitted:
         ok, message = sign_in(login_identifier, login_password)
@@ -21,3 +21,4 @@ def render_auth_screen() -> None:
             st.rerun()
         else:
             st.error(message)
+

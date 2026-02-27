@@ -75,7 +75,7 @@ def render_page() -> None:
         daily_df["day"] = pd.to_datetime(daily_df["day"])
         chart_df = daily_df.set_index("day")[["total_messages", "assistant_messages", "total_tokens"]]
         st.line_chart(chart_df)
-        st.dataframe(daily_df.sort_values("day", ascending=False), use_container_width=True)
+        st.dataframe(daily_df.sort_values("day", ascending=False), width="stretch")
 
     st.markdown("### Provider And Model Usage")
     provider_df = _safe_dataframe(provider_usage)
@@ -88,13 +88,13 @@ def render_page() -> None:
             st.info("No provider usage data yet.")
         else:
             st.bar_chart(provider_df.set_index("llm_provider")[["total_tokens", "assistant_messages"]])
-            st.dataframe(provider_df, use_container_width=True)
+            st.dataframe(provider_df, width="stretch")
     with right_col:
         st.caption("Top models")
         if model_df.empty:
             st.info("No model usage data yet.")
         else:
-            st.dataframe(model_df, use_container_width=True)
+            st.dataframe(model_df, width="stretch")
 
     st.markdown("### Transaction Analytics")
     tx_daily_df = _safe_dataframe(tx_daily)
@@ -120,7 +120,7 @@ def render_page() -> None:
             .sort_index()
         )
         st.area_chart(pivot_tx)
-        st.dataframe(tx_daily_df.sort_values("day", ascending=False), use_container_width=True)
+        st.dataframe(tx_daily_df.sort_values("day", ascending=False), width="stretch")
     else:
         st.info("No transaction history yet.")
 
@@ -128,7 +128,7 @@ def render_page() -> None:
     if tx_fail_df.empty:
         st.info("No failed/pending transactions.")
     else:
-        st.dataframe(tx_fail_df, use_container_width=True)
+        st.dataframe(tx_fail_df, width="stretch")
 
     st.markdown("### Auth Events")
     auth_df = _safe_dataframe(auth_daily)
@@ -147,14 +147,14 @@ def render_page() -> None:
             .sort_index()
         )
         st.bar_chart(pivot_auth)
-        st.dataframe(auth_df.sort_values("day", ascending=False), use_container_width=True)
+        st.dataframe(auth_df.sort_values("day", ascending=False), width="stretch")
 
     st.markdown("### Entity Status")
     entity_df = _safe_dataframe(entity_status)
     if entity_df.empty:
         st.info("No account/card status data yet.")
     else:
-        st.dataframe(entity_df, use_container_width=True)
+        st.dataframe(entity_df, width="stretch")
 
     st.markdown("### Data Quality")
     quality_cols = st.columns(5)
@@ -172,3 +172,4 @@ def render_page() -> None:
     refreshed_at = str(quality.get("refreshed_at") or "")
     if refreshed_at:
         st.caption(f"Analytics snapshot refreshed at: {refreshed_at}")
+

@@ -10,7 +10,7 @@ def render_page() -> None:
 
     plain_password = st.text_input("Password", type="password")
 
-    if st.button("Generate Hash", type="primary", use_container_width=True):
+    if st.button("Generate Hash", type="primary", width="stretch"):
         if not plain_password:
             st.warning("Please enter a password.")
             return
@@ -23,3 +23,4 @@ def render_page() -> None:
 
         st.success("Hash generated.")
         st.code(hashed)
+

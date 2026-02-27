@@ -123,7 +123,7 @@ def _render_chat(user: dict[str, str]) -> None:
 
     with st.form("chat_input_form", clear_on_submit=True):
         user_input = st.text_input("Ask anything", placeholder=DEFAULT_PLACEHOLDER)
-        send_clicked = st.form_submit_button("Send", type="primary", use_container_width=True)
+        send_clicked = st.form_submit_button("Send", type="primary", width="stretch")
 
     if send_clicked and user_input.strip():
         try:
@@ -178,7 +178,7 @@ def _render_chat(user: dict[str, str]) -> None:
 
     left_col, right_col = st.columns([9, 1])
     with right_col:
-        if st.button("Clear", key="clear_chat_btn", use_container_width=False, help="Clear today's chat history"):
+        if st.button("Clear", key="clear_chat_btn", width="content", help="Clear today's chat history"):
             try:
                 clear_chat_messages(user_id=user_id)
             except Exception as exc:
@@ -215,7 +215,7 @@ def run() -> None:
     st.sidebar.success(f"Logged in as {display_name}")
     st.sidebar.caption(f"Role: {access_role}")
 
-    if st.sidebar.button("Logout", use_container_width=True):
+    if st.sidebar.button("Logout", width="stretch"):
         sign_out()
         st.session_state.history = []
         st.session_state.history_loaded = False
@@ -284,3 +284,4 @@ if __name__ == "__main__":
     except Exception as exc:
         logger.exception("Unhandled app error.")
         st.exception(exc)
+
