@@ -117,7 +117,8 @@ def _render_chat(user: dict[str, str]) -> None:
     st.markdown("### Conversation")
     for turn in st.session_state.history:
         st.markdown(f"**You:** {turn['user']}")
-        st.markdown(f"**Assistant:** {turn['assistant']}")
+        st.markdown("**Assistant:**")
+        st.markdown(turn["assistant"])
 
     left_col, right_col = st.columns([9, 1])
     with right_col:
@@ -227,3 +228,4 @@ if __name__ == "__main__":
     except Exception as exc:
         logger.exception("Unhandled app error.")
         st.exception(exc)
+

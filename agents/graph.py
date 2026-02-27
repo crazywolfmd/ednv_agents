@@ -93,14 +93,11 @@ def task_agent(state: AgentState) -> AgentState:
             "token_usage": usage,
         }
 
-    try:
-        chain = build_task_chain()
-        output = chain.invoke({"user_input": user_input})
-        usage = _merge_usage(usage, _extract_usage(output))
-        raw = getattr(output, "content", "") or ""
-        parsed = _safe_json_loads(raw)
-    except Exception:
-        raise
+    chain = build_task_chain()
+    output = chain.invoke({"user_input": user_input})
+    usage = _merge_usage(usage, _extract_usage(output))
+    raw = getattr(output, "content", "") or ""
+    parsed = _safe_json_loads(raw)
 
     intent = str(parsed.get("intent", "general_chat"))
     action_params = parsed.get("params", {}) if isinstance(parsed.get("params"), dict) else {}
@@ -116,13 +113,10 @@ def task_agent(state: AgentState) -> AgentState:
         if general_response:
             result["assistant_response"] = general_response
         else:
-            try:
-                chat_chain = build_chat_chain()
-                chat_output = chat_chain.invoke({"user_input": user_input})
-                result["assistant_response"] = getattr(chat_output, "content", "") or ""
-                result["token_usage"] = _merge_usage(usage, _extract_usage(chat_output))
-            except Exception:
-                raise
+            chat_chain = build_chat_chain()
+            chat_output = chat_chain.invoke({"user_input": user_input})
+            result["assistant_response"] = getattr(chat_output, "content", "") or ""
+            result["token_usage"] = _merge_usage(usage, _extract_usage(chat_output))
 
     return result
 
@@ -150,20 +144,22 @@ def rules_engine(state: AgentState) -> AgentState:
 def validator_agent(state: AgentState) -> AgentState:
     response = state.get("assistant_response", "")
     usage = state.get("token_usage", {})
+    intent = str(state.get("intent", "general_chat"))
+
+    if intent != "general_chat":
+        return {"assistant_response": response, "token_usage": usage}
+
     if not response:
         return {
             "assistant_response": "I could not generate a response right now.",
             "token_usage": usage,
         }
 
-    try:
-        chain = build_validation_chain()
-        output = chain.invoke({"assistant_response": response})
-        usage = _merge_usage(usage, _extract_usage(output))
-        parsed = _safe_json_loads(getattr(output, "content", "") or "")
-        final_response = str(parsed.get("final_response", "")).strip()
-    except Exception:
-        raise
+    chain = build_validation_chain()
+    output = chain.invoke({"assistant_response": response})
+    usage = _merge_usage(usage, _extract_usage(output))
+    parsed = _safe_json_loads(getattr(output, "content", "") or "")
+    final_response = str(parsed.get("final_response", "")).strip()
 
     if final_response:
         return {"assistant_response": final_response, "token_usage": usage}

@@ -62,9 +62,15 @@ def _is_valid_uuid(value: str) -> bool:
 
 
 def _fmt_account(account: dict[str, Any]) -> str:
+    account_id = account.get("account_id", "unknown")
+    account_type = str(account.get("account_type", "account")).title()
+    currency = account.get("currency", "USD")
+    balance = account.get("balance", "0")
+    status = account.get("status", "unknown")
     return (
-        f"{account.get('account_id')} | {account.get('account_type')} | "
-        f"{account.get('currency')} {account.get('balance')} | {account.get('status')}"
+        f"- **{account_type}** account (`{account_id}`)\n"
+        f"  - Balance: `{balance} {currency}`\n"
+        f"  - Status: `{status}`"
     )
 
 
@@ -344,3 +350,4 @@ def handle_rules_and_execution(
         return _build_confirm_message(summary), pending
 
     return "No transaction action recognized. I can still help with banking questions.", None
+
