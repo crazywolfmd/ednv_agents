@@ -10,6 +10,8 @@ Run scripts in order in Supabase SQL Editor:
 6. `db/sql/006_seed_test_user_financial_data.sql` (optional seed for username `test`)
 7. `db/sql/007_add_access_role_to_users.sql`
 8. `db/sql/008_assign_initial_user_roles.sql`
+9. `db/sql/009_add_llm_observability_columns.sql`
+10. `db/sql/010_backfill_llm_provider.sql` (optional backfill)
 
 Notes:
 - All project tables use the `caas_` prefix.

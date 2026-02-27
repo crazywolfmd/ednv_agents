@@ -25,6 +25,7 @@ AI agent banking sandbox with Streamlit frontend, LangGraph orchestration, and S
 |-- agents/
 |-- db/
 |   `-- sql/
+|-- test/
 |-- requirements.txt
 `-- README.md
 ```
@@ -39,11 +40,33 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Set `.env` (or Streamlit Secrets):
+## LLM provider config
+
+Switch provider only by env values.
+
+### OpenAI
 
 ```env
+LLM_PROVIDER=openai
 OPENAI_API_KEY=...
-OPENAI_MODEL=gpt-4o-mini
+OPENAI_MODEL=gpt-5-nano
+# OPENAI_BASE_URL=https://api.openai.com/v1
+LLM_TEMPERATURE=0
+```
+
+### Hugging Face (OpenAI-compatible endpoint)
+
+```env
+LLM_PROVIDER=huggingface
+HUGGINGFACE_API_KEY=...
+HUGGINGFACE_MODEL=meta-llama/Llama-3.1-8B-Instruct
+HUGGINGFACE_BASE_URL=https://router.huggingface.co/v1
+LLM_TEMPERATURE=0
+```
+
+## Other required config
+
+```env
 LANGSMITH_API_KEY=...              # optional
 LANGSMITH_TRACING=true
 LANGSMITH_PROJECT=chaos-as-a-service-dev
@@ -59,6 +82,9 @@ Run in Supabase SQL Editor:
 2. `db/sql/002_create_rls.sql`
 3. `db/sql/003_create_financial_tables.sql`
 4. `db/sql/004_create_financial_rls.sql`
+5. `db/sql/005_add_llm_token_usage_columns.sql`
+6. `db/sql/006_seed_test_user_financial_data.sql` (optional)
+7. `db/sql/007_add_access_role_to_users.sql`
 
 ## Run
 
@@ -71,9 +97,10 @@ streamlit run app.py
 - Transfer/open/close actions require explicit confirmation.
 - When prompted, type `CONFIRM` to execute or `CANCEL` to abort.
 
-Example prompts:
-- `Show my balances`
-- `Transfer 25 USD from <from_account_id> to <to_account_id>`
-- `Open a USD savings account`
-- `Open a virtual card linked to <account_id>`
-- `Close card <card_id>`
+
+## Test LLM provider
+
+```powershell
+python test/check_llm_provider.py --provider openai
+python test/check_llm_provider.py --provider huggingface
+```

@@ -40,8 +40,34 @@ Return JSON only:
 """.strip()
 
 
-def _build_llm():
-    return ChatOpenAI(model=settings.openai_model, temperature=0)
+def _build_openai_llm() -> ChatOpenAI:
+    kwargs: dict[str, object] = {
+        "model": settings.openai_model,
+        "temperature": settings.llm_temperature,
+    }
+    if settings.openai_base_url:
+        kwargs["base_url"] = settings.openai_base_url
+    return ChatOpenAI(**kwargs)
+
+
+def _build_huggingface_llm() -> ChatOpenAI:
+    if not settings.huggingface_api_key:
+        raise ValueError("HUGGINGFACE_API_KEY (or HF_TOKEN) is required when LLM_PROVIDER=huggingface")
+
+    return ChatOpenAI(
+        model=settings.huggingface_model,
+        api_key=settings.huggingface_api_key,
+        base_url=settings.huggingface_base_url,
+        temperature=settings.llm_temperature,
+    )
+
+
+def _build_llm() -> ChatOpenAI:
+    if settings.llm_provider == "openai":
+        return _build_openai_llm()
+    if settings.llm_provider == "huggingface":
+        return _build_huggingface_llm()
+    raise ValueError("Unsupported LLM_PROVIDER. Use 'openai' or 'huggingface'.")
 
 
 def build_task_chain():
