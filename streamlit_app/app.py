@@ -275,7 +275,9 @@ def run() -> None:
             st.exception(exc)
         return
 
-    _render_chat(user=user)
+    left_col, content_col, right_col = st.columns([1, 6, 1])
+    with content_col:
+        _render_chat(user=user)
 
 
 if __name__ == "__main__":
@@ -284,4 +286,8 @@ if __name__ == "__main__":
     except Exception as exc:
         logger.exception("Unhandled app error.")
         st.exception(exc)
+
+
+
+
 
