@@ -5,7 +5,7 @@ import logging
 import streamlit as st
 
 from agents.graph import build_graph
-from db.repository import fetch_recent_chat_messages, insert_chat_message
+from db.repository import clear_chat_messages, fetch_recent_chat_messages, insert_chat_message, purge_old_chat_messages
 from streamlit_app.auth.service import get_current_user, init_auth_state, is_authenticated, sign_out
 from streamlit_app.auth.ui import render_auth_screen
 from streamlit_app.pages.admin_console import render_page as render_admin_console_page
@@ -22,7 +22,12 @@ def _load_history_once(user_id: str) -> None:
         return
 
     try:
-        rows = fetch_recent_chat_messages(user_id=user_id, limit=30)
+        purge_old_chat_messages(user_id=user_id, days=1)
+    except Exception:
+        logger.exception("Daily chat cleanup failed.")
+
+    try:
+        rows = fetch_recent_chat_messages(user_id=user_id, limit=5000)
     except Exception:
         st.session_state.history = []
         st.session_state.history_loaded = True
@@ -74,16 +79,14 @@ def _render_chat(user: dict[str, str]) -> None:
 
     _load_history_once(user_id=user_id)
 
-    for turn in st.session_state.history:
-        st.markdown(f"**You:** {turn['user']}")
-        st.markdown(f"**Assistant:** {turn['assistant']}")
-
     if st.session_state.pending_action:
         st.info("A transaction is pending confirmation. Type CONFIRM to execute or CANCEL to abort.")
 
-    user_input = st.text_input("Ask anything", placeholder=DEFAULT_PLACEHOLDER)
+    with st.form("chat_input_form", clear_on_submit=True):
+        user_input = st.text_input("Ask anything", placeholder=DEFAULT_PLACEHOLDER)
+        send_clicked = st.form_submit_button("Send", type="primary", use_container_width=True)
 
-    if st.button("Send", type="primary", use_container_width=True) and user_input.strip():
+    if send_clicked and user_input.strip():
         try:
             result = graph.invoke(
                 {
@@ -110,6 +113,26 @@ def _render_chat(user: dict[str, str]) -> None:
             llm_usage=llm_usage,
         )
         st.rerun()
+
+    st.markdown("### Conversation")
+    for turn in st.session_state.history:
+        st.markdown(f"**You:** {turn['user']}")
+        st.markdown(f"**Assistant:** {turn['assistant']}")
+
+    left_col, right_col = st.columns([9, 1])
+    with right_col:
+        if st.button("Clear", key="clear_chat_btn", use_container_width=False, help="Clear today's chat history"):
+            try:
+                clear_chat_messages(user_id=user_id)
+            except Exception:
+                logger.exception("Failed to clear chat messages.")
+                st.error("Could not clear chat right now.")
+                return
+
+            st.session_state.history = []
+            st.session_state.pending_action = None
+            st.session_state.history_loaded = True
+            st.rerun()
 
 
 def run() -> None:

@@ -262,3 +262,19 @@ def apply_internal_transfer(
         }
     )
     return {"ok": True, "transaction": tx}
+
+def purge_old_chat_messages(user_id: str, days: int = 1) -> Any:
+    client = create_supabase_client()
+    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+    return (
+        client.table("caas_chat_messages")
+        .delete()
+        .eq("user_id", user_id)
+        .lt("created_at", cutoff)
+        .execute()
+    )
+
+
+def clear_chat_messages(user_id: str) -> Any:
+    client = create_supabase_client()
+    return client.table("caas_chat_messages").delete().eq("user_id", user_id).execute()
