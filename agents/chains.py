@@ -9,9 +9,9 @@ from agents.settings import settings
 TASK_SYSTEM_PROMPT = """
 You are a banking task agent. Extract a structured intent from user input.
 Return valid JSON only using this schema:
-{
+{{
   "intent": "general_chat|check_balance|list_recent_transactions|transfer_between_accounts|open_account|close_account|open_card|close_card",
-  "params": {
+  "params": {{
     "account_id": "optional uuid/string",
     "from_account_id": "optional uuid/string",
     "to_account_id": "optional uuid/string",
@@ -21,9 +21,9 @@ Return valid JSON only using this schema:
     "linked_account_id": "optional uuid/string",
     "card_type": "optional debit|virtual",
     "card_id": "optional uuid/string"
-  },
+  }},
   "general_response": "use only for general_chat, otherwise empty"
-}
+}}
 Rules:
 - If the user writes CONFIRM or CANCEL, set intent to general_chat and keep params empty.
 - For non-transactional conversation, set intent to general_chat with a concise helpful answer in general_response.
@@ -33,10 +33,10 @@ VALIDATION_SYSTEM_PROMPT = """
 You are a banking response validator.
 Ensure final user text is clear, non-technical, and does not expose internal system details.
 Return JSON only:
-{
+{{
   "approved": true,
   "final_response": "final message for end user"
-}
+}}
 """.strip()
 
 
