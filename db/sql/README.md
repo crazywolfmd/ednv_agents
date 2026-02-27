@@ -12,7 +12,8 @@ Run scripts in order in Supabase SQL Editor:
 8. `db/sql/008_assign_initial_user_roles.sql`
 9. `db/sql/009_add_llm_observability_columns.sql`
 10. `db/sql/010_backfill_llm_provider.sql` (optional backfill)
-11. `db/sql/011_create_admin_analytics_views.sql`
+11. `db/sql/011_create_admin_analytics_views.sql` 
+12. `db/sql/012_backfill_llm_provider_by_model.sql` (optional backfill for mixed providers)
 
 Notes:
 - All project tables use the `caas_` prefix.
@@ -23,3 +24,5 @@ Notes:
 - `caas_chat_messages` stores per-turn token usage metadata (`llm_*` columns).
 - Admin dashboard queries analytics views `caas_admin_vw_*` from `011_create_admin_analytics_views.sql`.
 - Login lookup uses `email` first, then `username`.
+
+

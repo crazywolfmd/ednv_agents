@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from db.client import create_supabase_client
+from agents.settings import settings
 
 
 def insert_row(table: str, payload: dict[str, Any]) -> Any:
@@ -64,6 +65,7 @@ def insert_chat_message(
     if llm_usage:
         payload.update(
             {
+                "llm_provider": llm_usage.get("llm_provider") or settings.llm_provider,
                 "llm_model": llm_usage.get("llm_model"),
                 "llm_prompt_tokens": int(llm_usage.get("prompt_tokens", 0) or 0),
                 "llm_completion_tokens": int(llm_usage.get("completion_tokens", 0) or 0),
@@ -365,3 +367,5 @@ def get_admin_entity_status() -> list[dict[str, Any]]:
 
 def get_admin_data_quality() -> dict[str, Any]:
     return _fetch_single_admin_view_row("caas_admin_vw_data_quality")
+
+

@@ -137,7 +137,7 @@ def _render_chat(user: dict[str, str]) -> None:
 
 
 def run() -> None:
-    st.set_page_config(page_title=APP_TITLE, page_icon=":robot_face:")
+    st.set_page_config(page_title=APP_TITLE, page_icon=":robot_face:", layout="wide")
     st.title(APP_TITLE)
     st.caption(APP_CAPTION)
 
@@ -228,4 +228,5 @@ if __name__ == "__main__":
     except Exception as exc:
         logger.exception("Unhandled app error.")
         st.exception(exc)
+
 

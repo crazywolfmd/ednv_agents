@@ -8,6 +8,7 @@ from langsmith import traceable
 
 from agents.chains import build_chat_chain, build_task_chain, build_validation_chain
 from agents.rules_engine import handle_rules_and_execution
+from agents.settings import settings
 
 
 class AgentState(TypedDict, total=False):
@@ -32,6 +33,7 @@ def _extract_usage(message: Any) -> dict[str, Any]:
     completion_tokens = 0
     total_tokens = 0
     llm_model = ""
+    llm_provider = settings.llm_provider
 
     usage_metadata = getattr(message, "usage_metadata", None)
     if isinstance(usage_metadata, dict):
@@ -58,6 +60,7 @@ def _extract_usage(message: Any) -> dict[str, Any]:
         "total_tokens": max(total_tokens, 0),
         "llm_calls": 1,
         "llm_model": llm_model,
+        "llm_provider": llm_provider,
     }
 
 
@@ -70,6 +73,7 @@ def _merge_usage(base: dict[str, Any] | None, inc: dict[str, Any] | None) -> dic
     total_tokens = int(base.get("total_tokens", 0) or 0) + int(inc.get("total_tokens", 0) or 0)
     llm_calls = int(base.get("llm_calls", 0) or 0) + int(inc.get("llm_calls", 0) or 0)
     llm_model = str(inc.get("llm_model") or base.get("llm_model") or "")
+    llm_provider = str(inc.get("llm_provider") or base.get("llm_provider") or settings.llm_provider)
 
     return {
         "prompt_tokens": prompt_tokens,
@@ -77,6 +81,7 @@ def _merge_usage(base: dict[str, Any] | None, inc: dict[str, Any] | None) -> dic
         "total_tokens": total_tokens,
         "llm_calls": llm_calls,
         "llm_model": llm_model,
+        "llm_provider": llm_provider,
     }
 
 
@@ -209,5 +214,12 @@ def build_graph():
     graph.add_edge("rules_engine", "validator_agent")
     graph.add_edge("validator_agent", END)
     return graph.compile()
+
+
+
+
+
+
+
 
 
